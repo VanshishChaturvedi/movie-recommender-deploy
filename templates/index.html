@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cinematch - Find Your Next Watch</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Cinematch</h1>
+        <p style="color: #888; margin-top: 10px">
+          Intelligent Movie Recommendations
+        </p>
+      </header>
+
+      <div class="search-section">
+        <div class="select-wrapper">
+          <input
+            type="text"
+            id="movieInput"
+            list="movieList"
+            placeholder="Type to search..."
+            style="
+              width: 100%;
+              height: 50px;
+              background: #1e1e1e;
+              border: 1px solid #333;
+              color: white;
+              padding: 0 16px;
+              border-radius: 8px;
+              font-size: 16px;
+              box-sizing: border-box;
+            "
+          />
+          <datalist id="movieList">
+            {% for title in movie_titles %}
+            <option value="{{ title }}">{% endfor %}</option>
+          </datalist>
+        </div>
+        <button onclick="getRecommendations()" id="recommendBtn">
+          Recommend
+        </button>
+      </div>
+
+      <div id="loader" class="loader"></div>
+      <div id="message"></div>
+
+      <div id="results" class="results-grid">
+        <!-- Results will be injected here -->
+      </div>
+    </div>
+
+    <footer>
+      <p>&copy; 2025 Vanshish Chaturvedi | Built with Flask & AI</p>
+    </footer>
+
+    <script>
+      async function getRecommendations() {
+        const input = document.getElementById("movieInput");
+        const movieName = input.value;
+        const btn = document.getElementById("recommendBtn");
+        const loader = document.getElementById("loader");
+        const results = document.getElementById("results");
+        const msg = document.getElementById("message");
+
+        if (!movieName) return;
+
+        // correct UI state
+        btn.disabled = true;
+        btn.innerText = "Searching...";
+        loader.style.display = "block";
+        results.innerHTML = "";
+        results.classList.remove("visible");
+        msg.innerText = "";
+
+        try {
+          const response = await fetch("/recommend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ movie: movieName }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            if (data.length === 0) {
+              msg.innerText = "No recommendations found.";
+            } else {
+              data.forEach((movie) => {
+                const card = document.createElement("a");
+                card.className = "movie-card";
+                card.href = movie.search_url;
+                card.target = "_blank";
+
+                card.innerHTML = `
+                                <img src="${movie.poster}" class="movie-poster" alt="${movie.title}" loading="lazy">
+                                <div class="movie-info">
+                                    <div class="movie-title">${movie.title}</div>
+                                </div>
+                            `;
+                results.appendChild(card);
+              });
+
+              // Trigger animation
+              setTimeout(() => results.classList.add("visible"), 50);
+            }
+          } else {
+            msg.innerText =
+              data.error || "Error finding movie. Please check the spelling.";
+          }
+        } catch (error) {
+          console.error(error);
+          msg.innerText = "An error occurred. Please try again.";
+        } finally {
+          btn.disabled = false;
+          btn.innerText = "Recommend";
+          loader.style.display = "none";
+        }
+      }
+
+      // Allow Enter key to submit
+      document
+        .getElementById("movieInput")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            getRecommendations();
+          }
+        });
+    </script>
+  </body>
+</html>
